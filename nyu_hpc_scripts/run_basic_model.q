@@ -2,7 +2,7 @@
 
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=05:00:00
-#PBS -l mem=2GB
+#PBS -l mem=4GB
 #PBS -N basic_model
 #PBS -M chirag.m@nyu.edu
 #PBS -j oe
@@ -11,11 +11,36 @@
 #Purge all the loaded modules, we'll load only the required modules
 module purge
 
-#Load required modules
+#Define important directories
+SRCDIR=$WORK
+PROJECT_NAME=Traffic-Sign-Detection-Kaggle
+RUNDIR=$SCRATCH
+
+#do the work
+#Move to running directory
+echo "Moving to running directory $RUNDIR"
+cd $RUNDIR
+
+#Load the required modules
+echo "Loading the modules..."
+
+echo "Loading torch/gnu/20160623"
 module load torch/gnu/20160623
 
-SRCDIR=$WORK/Traffic-Sign-Detection-Kaggle
+echo "Modules loaded!"
 
-#Start running the job
-cd $SRCDIR
-qlua main.lua -model cifar
+#Copy code to running directory
+if [ ! -d "$PROJECT_NAME" ]; then
+	echo "Copying code from $WORK/$PROJECT_NAME to $RUNDIR..."
+	cp -r $WORK/$PROJECT_NAME $RUNDIR/
+	echo "Copying done!"
+else
+	echo "Source Directory available, moving ahead!"
+fi
+
+#Move to project directory
+echo "Moving to project directory.."
+cd $PROJECT_NAME
+echo "Done!"
+
+qlua main.lua -model cifar -nEpochs 10 -verbose
