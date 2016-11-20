@@ -18,7 +18,7 @@ local opt = optParser.parse(arg)
 local WIDTH, HEIGHT = 32, 32
 local DATA_PATH = (opt.data ~= '' and opt.data or './data/')
 
-local logFile = assert(io.open(opt.logDir .. "/logs.log", "w"))
+local logFile = assert(io.open(string.format(opt.logDir .. "/logs_%d.log", os.time()), "w"))
 logFile:write("Training Started \n")
 
 torch.setdefaulttensortype('torch.DoubleTensor')
@@ -119,7 +119,7 @@ local clerr = tnt.ClassErrorMeter{topk = {1}}
 local timer = tnt.TimeMeter()
 local batch = 1
 
-logFile:write(model)
+logFile:write(string.format("Model: %s \n\n", opt.model))
 
 engine.hooks.onStart = function(state)
     meter:reset()
@@ -144,7 +144,7 @@ engine.hooks.onForwardCriterion = function(state)
     meter:add(state.criterion.output)
     clerr:add(state.network.output, state.sample.target)
     if opt.verbose == true then
-        logFile:write(string.format("%s Batch: %d/%d; avg. loss: %2.4f; avg. error: %2.4f",
+        logFile:write(string.format("%s Batch: %d/%d; avg. loss: %2.4f; avg. error: %2.4f \n",
                 mode, batch, state.iterator.dataset:size(), meter:value(), clerr:value{k = 1}))
     else
         xlua.progress(batch, state.iterator.dataset:size())
@@ -154,7 +154,7 @@ engine.hooks.onForwardCriterion = function(state)
 end
 
 engine.hooks.onEnd = function(state)
-    logFile:write(string.format("%s: avg. loss: %2.4f; avg. error: %2.4f, time: %2.4f",
+    logFile:write(string.format("%s: avg. loss: %2.4f; avg. error: %2.4f, time: %2.4f \n",
     mode, meter:value(), clerr:value{k = 1}, timer:value()))
 end
 
@@ -184,7 +184,7 @@ while epoch <= opt.nEpochs do
     epoch = epoch + 1
 end
 
-local submission = assert(io.open(opt.submissionDir .. "/submission.csv", "w"))
+local submission = assert(io.open(string.format(opt.submissionDir .. "/submission_%d.csv", os.time()), "w"))
 submission:write("Filename,ClassId\n")
 batch = 1
 
