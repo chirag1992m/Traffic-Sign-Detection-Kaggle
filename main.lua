@@ -18,6 +18,9 @@ local opt = optParser.parse(arg)
 local WIDTH, HEIGHT = 32, 32
 local DATA_PATH = (opt.data ~= '' and opt.data or './data/')
 
+local logFile = assert(io.open(opt.logDir .. "/logs.log", "w"))
+logFile:write("Training Started \n")
+
 torch.setdefaulttensortype('torch.DoubleTensor')
 
 -- torch.setnumthreads(1)
@@ -116,7 +119,7 @@ local clerr = tnt.ClassErrorMeter{topk = {1}}
 local timer = tnt.TimeMeter()
 local batch = 1
 
--- print(model)
+logFile:write(model)
 
 engine.hooks.onStart = function(state)
     meter:reset()
@@ -141,7 +144,7 @@ engine.hooks.onForwardCriterion = function(state)
     meter:add(state.criterion.output)
     clerr:add(state.network.output, state.sample.target)
     if opt.verbose == true then
-        print(string.format("%s Batch: %d/%d; avg. loss: %2.4f; avg. error: %2.4f",
+        logFile:write(string.format("%s Batch: %d/%d; avg. loss: %2.4f; avg. error: %2.4f",
                 mode, batch, state.iterator.dataset:size(), meter:value(), clerr:value{k = 1}))
     else
         xlua.progress(batch, state.iterator.dataset:size())
@@ -151,7 +154,7 @@ engine.hooks.onForwardCriterion = function(state)
 end
 
 engine.hooks.onEnd = function(state)
-    print(string.format("%s: avg. loss: %2.4f; avg. error: %2.4f, time: %2.4f",
+    logFile:write(string.format("%s: avg. loss: %2.4f; avg. error: %2.4f, time: %2.4f",
     mode, meter:value(), clerr:value{k = 1}, timer:value()))
 end
 
@@ -177,11 +180,11 @@ while epoch <= opt.nEpochs do
         criterion = criterion,
         iterator = getIterator(trainDataset)
     }
-    print('Done with Epoch '..tostring(epoch))
+    logFile:write('Done with Epoch '..tostring(epoch))
     epoch = epoch + 1
 end
 
-local submission = assert(io.open(opt.logDir .. "/submission.csv", "w"))
+local submission = assert(io.open(opt.submissionDir .. "/submission.csv", "w"))
 submission:write("Filename,ClassId\n")
 batch = 1
 
@@ -209,4 +212,5 @@ engine:test{
     iterator = getIterator(testDataset)
 }
 
-print("The End!")
+logFile:write("The End!")
+logFile:close()
