@@ -2,11 +2,10 @@
 
 #PBS -l nodes=1:ppn=1
 #PBS -l walltime=05:00:00
-#PBS -l mem=4GB
+#PBS -l mem=12GB
 #PBS -N basic_model
 #PBS -M chirag.m@nyu.edu
 #PBS -j oe
-#PBS -o logs/${PBS_JOBID.log}
 
 #Purge all the loaded modules, we'll load only the required modules
 module purge
@@ -41,6 +40,7 @@ fi
 #Move to project directory
 echo "Moving to project directory.."
 cd $PROJECT_NAME
-echo "Done!"
 
+echo "Running the model with 10 epochs in a verbose mode..."
 qlua main.lua -model cifar -nEpochs 10 -verbose
+echo "All Done!"
