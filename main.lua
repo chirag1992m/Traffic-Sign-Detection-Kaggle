@@ -2,8 +2,6 @@ require 'torch'
 require 'optim'
 require 'os'
 require 'xlua'
--- require 'cunn'
--- require 'cudnn' -- faster convolutions
 
 --[[
 --  Hint:  Plot as much as you can.  
@@ -15,6 +13,11 @@ local image = require 'image'
 local optParser = require 'opts'
 local opt = optParser.parse(arg)
 
+if opt.cuda then
+    require 'cunn'
+    require 'cudnn' -- faster convolutions
+end
+
 local WIDTH, HEIGHT = 32, 32
 local DATA_PATH = (opt.data ~= '' and opt.data or './data/')
 
@@ -23,9 +26,12 @@ logFile:write("Training Started \n")
 
 torch.setdefaulttensortype('torch.DoubleTensor')
 
--- torch.setnumthreads(1)
+torch.setnumthreads(opt.nThreads)
 torch.manualSeed(opt.manualSeed)
--- cutorch.manualSeedAll(opt.manualSeed)
+
+if opt.cuda then
+    cutorch.manualSeedAll(opt.manualSeed)
+end
 
 function resize(img)
     return image.scale(img, WIDTH,HEIGHT)
@@ -60,23 +66,11 @@ function getTestSample(dataset, idx)
     return transformInput(image.load(file))
 end
 
-function getIterator(dataset)
-    --[[
-    -- Hint:  Use ParallelIterator for using multiple CPU cores
-    --]]
-    return tnt.DatasetIterator{
-        dataset = tnt.BatchDataset{
-            batchsize = opt.batchsize,
-            dataset = dataset
-        }
-    }
-end
-
 local trainData = torch.load(DATA_PATH..'train.t7')
 local testData = torch.load(DATA_PATH..'test.t7')
 
 trainDataset = tnt.SplitDataset{
-    partitions = {train=0.9, val=0.1},
+    partitions = {train=(1 - (opt.val/100.0)), val=(opt.val/100.0)},
     initialpartition = 'train',
     --[[
     --  Hint:  Use a resampling strategy that keeps the 
@@ -102,10 +96,63 @@ testDataset = tnt.ListDataset{
     load = function(idx)
         return {
             input = getTestSample(testData, idx),
-            sampleId = torch.LongTensor{testData[idx][1]}
+            target = torch.LongTensor{testData[idx][1]}
         }
     end
 }
+
+local getIterator = function (dataset)
+    return tnt.DatasetIterator{
+        dataset = tnt.BatchDataset{
+            batchsize = opt.batchsize,
+            dataset = dataset
+        }
+    }
+end
+
+--[[
+if opt.cuda then
+    getIterator = function (dataset)
+        return tnt.ParallelDatasetIterator{
+            nthread = opt.nThreads,
+
+            init = function ()
+                    local tnt = require 'torchnet'
+                end,
+
+            closure = function ()
+                    local image = require 'image'
+
+                    local resize = function(img)
+                        return image.scale(img, WIDTH,HEIGHT)
+                    end
+
+                    local getTrainSample = function (dataset, idx)
+                        r = dataset[idx]
+                        classId, track, file = r[9], r[1], r[2]
+                        file = string.format("%05d/%05d_%05d.ppm", classId, track, file)
+                        return resize(image.load(DATA_PATH .. '/train_images/'..file))
+                    end
+
+                    local getTrainLabel = function (dataset, idx)
+                        return torch.LongTensor{dataset[idx][9] + 1}
+                    end
+
+                    local getTestSample = function (dataset, idx)
+                        r = dataset[idx]
+                        file = DATA_PATH .. "/test_images/" .. string.format("%05d.ppm", r[1])
+                        return transformInput(image.load(file))
+                    end
+
+                    return tnt.BatchDataset{
+                        batchsize = opt.batchsize,
+                        dataset = dataset
+                    }
+                end
+        }
+    end
+end
+--]]
 
 
 --[[
@@ -119,7 +166,12 @@ local clerr = tnt.ClassErrorMeter{topk = {1}}
 local timer = tnt.TimeMeter()
 local batch = 1
 
-logFile:write(tostring(model))
+if opt.cuda then
+    model = model:cuda()
+    criterion = criterion:cuda()
+end
+
+logFile:write('\nModel: '..tostring(model)..'\n\n')
 
 engine.hooks.onStart = function(state)
     meter:reset()
@@ -137,8 +189,17 @@ end
 -- Hint:  Use onSample function to convert to 
 --        cuda tensor for using GPU
 --]]
--- engine.hooks.onSample = function(state)
--- end
+if opt.cuda then
+    local inputGPU = torch.CudaTensor()
+    local targetGPU = torch.CudaTensor()
+    
+    engine.hooks.onSample = function(state)
+        inputGPU:resize(state.sample.input:size() ):copy(state.sample.input)
+        targetGPU:resize(state.sample.target:size()):copy(state.sample.target)
+        state.sample.input  = inputGPU
+        state.sample.target = targetGPU
+    end
+end
 
 engine.hooks.onForwardCriterion = function(state)
     meter:add(state.criterion.output)
@@ -161,7 +222,6 @@ end
 local epoch = 1
 
 while epoch <= opt.nEpochs do
-    trainDataset:select('train')
     engine:train{
         network = model,
         criterion = criterion,
@@ -180,6 +240,7 @@ while epoch <= opt.nEpochs do
         criterion = criterion,
         iterator = getIterator(trainDataset)
     }
+
     logFile:write('Done with Epoch '..tostring(epoch)..'\n')
     epoch = epoch + 1
 end
@@ -193,7 +254,7 @@ batch = 1
 --  file that has to be uploaded in kaggle.
 --]]
 engine.hooks.onForward = function(state)
-    local fileNames  = state.sample.sampleId
+    local fileNames  = state.sample.target
     local _, pred = state.network.output:max(2)
     pred = pred - 1
     for i = 1, pred:size(1) do
