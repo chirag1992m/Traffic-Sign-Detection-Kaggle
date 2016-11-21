@@ -201,7 +201,7 @@ engine.hooks.onForward = function(state)
     end
 
     if opt.verbose == true then
-        logFile:write(string.format("%s Batch: %d/%d; \n", batch, state.iterator.dataset:size()))
+        logFile:write(string.format("%s Batch: %d/%d; \n", "test", batch, state.iterator.dataset:size()))
     else
         xlua.progress(batch, state.iterator.dataset:size())
     end
