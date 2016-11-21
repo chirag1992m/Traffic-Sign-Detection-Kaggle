@@ -119,7 +119,7 @@ local clerr = tnt.ClassErrorMeter{topk = {1}}
 local timer = tnt.TimeMeter()
 local batch = 1
 
-logFile:write(string.format("Model: %s \n\n", opt.model))
+logFile:write(tostring(model))
 
 engine.hooks.onStart = function(state)
     meter:reset()
@@ -180,7 +180,7 @@ while epoch <= opt.nEpochs do
         criterion = criterion,
         iterator = getIterator(trainDataset)
     }
-    logFile:write('Done with Epoch '..tostring(epoch))
+    logFile:write('Done with Epoch '..tostring(epoch)..'\n')
     epoch = epoch + 1
 end
 
