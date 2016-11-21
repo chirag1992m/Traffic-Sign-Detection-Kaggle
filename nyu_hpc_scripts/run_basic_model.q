@@ -34,7 +34,9 @@ if [ ! -d "$PROJECT_NAME" ]; then
 	cp -r $WORK/$PROJECT_NAME $RUNDIR/
 	echo "Copying done!"
 else
-	echo "Source Directory available, moving ahead!"
+	echo "Syncing code from $WORK/$PROJECT_NAME to $RUNDIR..."
+	rsync -Cvrzh --exclude='*.ppm' /$WORK/$PROJECT_NAME $RUNDIR/
+	echo "Syncing done!"
 fi
 
 #Move to project directory
