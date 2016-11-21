@@ -199,7 +199,13 @@ engine.hooks.onForward = function(state)
     for i = 1, pred:size(1) do
         submission:write(string.format("%05d,%d\n", fileNames[i][1], pred[i][1]))
     end
-    xlua.progress(batch, state.iterator.dataset:size())
+
+    if opt.verbose == true then
+        logFile:write(string.format("%s Batch: %d/%d; \n", batch, state.iterator.dataset:size()))
+    else
+        xlua.progress(batch, state.iterator.dataset:size())
+    end
+
     batch = batch + 1
 end
 
