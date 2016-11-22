@@ -155,9 +155,6 @@ end
 --]]
 
 
---[[
--- Hint:  Use :cuda to convert your model to use GPUs
---]]
 local model = require("models/".. opt.model)
 local engine = tnt.OptimEngine()
 local meter = tnt.AverageValueMeter()
@@ -185,10 +182,7 @@ engine.hooks.onStart = function(state)
     end
 end
 
---[[
--- Hint:  Use onSample function to convert to 
---        cuda tensor for using GPU
---]]
+
 if opt.cuda then
     local inputGPU = torch.CudaTensor()
     local targetGPU = torch.CudaTensor()
@@ -222,6 +216,7 @@ end
 local epoch = 1
 
 while epoch <= opt.nEpochs do
+    trainDataset:select('train')
     engine:train{
         network = model,
         criterion = criterion,
