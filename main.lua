@@ -16,6 +16,10 @@ local opt = optParser.parse(arg)
 if opt.cuda then
     require 'cunn'
     require 'cudnn' -- faster convolutions
+
+    cudnn.benchmark = true
+    cudnn.fastest = true
+    cudnn.verbose = true
 end
 
 local WIDTH, HEIGHT = 32, 32
@@ -276,3 +280,7 @@ engine:test{
 
 logFile:write("The End!")
 logFile:close()
+
+-- Dump the results in files
+model:clearState()
+torch.save(string.format(opt.logDir .. "/model_%d.model", os.time()), model)
