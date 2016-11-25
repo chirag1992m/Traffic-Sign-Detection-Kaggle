@@ -25,7 +25,8 @@ end
 local WIDTH, HEIGHT = 32, 32
 local DATA_PATH = (opt.data ~= '' and opt.data or './data/')
 
-local logFile = assert(io.open(string.format(opt.logDir .. "/logs_%d.log", os.time()), "w"))
+local file_suffix = os.time();
+local logFile = assert(io.open(string.format(opt.logDir .. "/logs_%d.log", file_suffix), "w"))
 logFile:write("Training Started \n")
 
 torch.setdefaulttensortype('torch.DoubleTensor')
@@ -244,7 +245,7 @@ while epoch <= opt.nEpochs do
     epoch = epoch + 1
 end
 
-local submission = assert(io.open(string.format(opt.submissionDir .. "/submission_%d.csv", os.time()), "w"))
+local submission = assert(io.open(string.format(opt.submissionDir .. "/submission_%d.csv", file_suffix), "w"))
 submission:write("Filename,ClassId\n")
 batch = 1
 
@@ -283,4 +284,4 @@ logFile:close()
 
 -- Dump the results in files
 model:clearState()
-torch.save(string.format(opt.logDir .. "/model_%d.model", os.time()), model)
+torch.save(string.format(opt.logDir .. "/model_%d.model", file_suffix), model)
