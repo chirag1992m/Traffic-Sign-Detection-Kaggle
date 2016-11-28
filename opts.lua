@@ -20,6 +20,8 @@ function M.parse(arg)
     cmd:option('-model',            '',             'Model to use for training')
     cmd:option('-verbose',          false,          'Print stats for every batch')
     cmd:option('-cuda',				false,			'Use cuda tensor')
+    cmd:option('-suffix',           '',             'Suffic to add on all output files')
+    cmd:option('-imageSize',        32,             'Image Size in pixels to work on')
 
     local opt = cmd:parse(arg or {})
 

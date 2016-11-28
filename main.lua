@@ -22,12 +22,11 @@ if opt.cuda then
     cudnn.verbose = true
 end
 
-local WIDTH, HEIGHT = 32, 32
+local WIDTH, HEIGHT = opt.imageSize, opt.imageSize
 local DATA_PATH = (opt.data ~= '' and opt.data or './data/')
 
-local file_suffix = os.time();
-local logFile = assert(io.open(string.format(opt.logDir .. "/logs_%d.log", file_suffix), "w"))
-logFile:write("Training Started \n")
+local file_suffix = opt.suffix .. string.format("_%d", os.time());
+print("Training Started")
 
 torch.setdefaulttensortype('torch.DoubleTensor')
 
@@ -168,17 +167,29 @@ local clerr = tnt.ClassErrorMeter{topk = {1}}
 local timer = tnt.TimeMeter()
 local batch = 1
 
+local trainingLosses, trainingErrors = {}, {}
+local intermediateTL, intermediateTE = {}, {}
+local validationLosses, validationErrors = {}, {}
+local intermediateVL, intermediateVE = {}, {}
+
+function metricCollectorReset()
+    intermediateTL, intermediateTE = {}, {}
+    intermediateVL, intermediateVE = {}, {}
+end
+
+
 if opt.cuda then
     model = model:cuda()
     criterion = criterion:cuda()
 end
 
-logFile:write('\nModel: '..tostring(model)..'\n\n')
+print('\nModel: '..tostring(model)..'\n')
 
 engine.hooks.onStart = function(state)
     meter:reset()
     clerr:reset()
     timer:reset()
+    metricCollectorReset()
     batch = 1
     if state.training then
         mode = 'Train'
@@ -204,17 +215,26 @@ engine.hooks.onForwardCriterion = function(state)
     meter:add(state.criterion.output)
     clerr:add(state.network.output, state.sample.target)
     if opt.verbose == true then
-        logFile:write(string.format("%s Batch: %d/%d; avg. loss: %2.4f; avg. error: %2.4f \n",
+        print(string.format("%s Batch: %d/%d; avg. loss: %2.4f; avg. error: %2.4f",
                 mode, batch, state.iterator.dataset:size(), meter:value(), clerr:value{k = 1}))
     else
         xlua.progress(batch, state.iterator.dataset:size())
     end
+
+    if mode == 'Train' then
+        intermediateTL[batch] = meter:value()
+        intermediateTE[batch] = clerr:value{k = 1}
+    else
+        intermediateVL[batch] = meter:value()
+        intermediateVE[batch] = clerr:value{k = 1}
+    end
+
     batch = batch + 1 -- batch increment has to happen here to work for train, val and test.
     timer:incUnit()
 end
 
 engine.hooks.onEnd = function(state)
-    logFile:write(string.format("%s: avg. loss: %2.4f; avg. error: %2.4f, time: %2.4f \n",
+    print(string.format("%s: avg. loss: %2.4f; avg. error: %2.4f, time: %2.4f",
     mode, meter:value(), clerr:value{k = 1}, timer:value()))
 end
 
@@ -234,6 +254,9 @@ while epoch <= opt.nEpochs do
         }
     }
 
+    trainingLosses[epoch] = intermediateTL
+    trainingErrors[epoch] = intermediateTE
+
     trainDataset:select('val')
     engine:test{
         network = model,
@@ -241,11 +264,14 @@ while epoch <= opt.nEpochs do
         iterator = getIterator(trainDataset)
     }
 
-    logFile:write('Done with Epoch '..tostring(epoch)..'\n')
+    validationLosses[epoch] = intermediateVL
+    validationErrors[epoch] = intermediateVE
+
+    print('Done with Epoch '..tostring(epoch))
     epoch = epoch + 1
 end
 
-local submission = assert(io.open(string.format(opt.submissionDir .. "/submission_%d.csv", file_suffix), "w"))
+local submission = assert(io.open(opt.submissionDir .. "/submission_" .. file_suffix .. ".csv", "w"))
 submission:write("Filename,ClassId\n")
 batch = 1
 
@@ -262,7 +288,7 @@ engine.hooks.onForward = function(state)
     end
 
     if opt.verbose == true then
-        logFile:write(string.format("%s Batch: %d/%d; \n", "test", batch, state.iterator.dataset:size()))
+        print(string.format("%s Batch: %d/%d;", "test", batch, state.iterator.dataset:size()))
     else
         xlua.progress(batch, state.iterator.dataset:size())
     end
@@ -279,9 +305,11 @@ engine:test{
     iterator = getIterator(testDataset)
 }
 
-logFile:write("The End!")
-logFile:close()
-
 -- Dump the results in files
 model:clearState()
-torch.save(string.format(opt.logDir .. "/model_%d.model", file_suffix), model)
+torch.save(opt.logDir .. "/model_" .. file_suffix .. ".model", model)
+
+torch.save(opt.logDir .. "/trainingErrors_" .. file_suffix .. ".log", torch.Tensor(trainingErrors))
+torch.save(opt.logDir .. "/trainingLosses_" .. file_suffix .. ".log", torch.Tensor(trainingLosses))
+torch.save(opt.logDir .. "/validationErrors_" .. file_suffix .. ".log", torch.Tensor(validationErrors))
+torch.save(opt.logDir .. "/validationLosses_" .. file_suffix .. ".log", torch.Tensor(validationLosses))
