@@ -70,7 +70,7 @@ function getTestSample(dataset, idx)
     return transformInput(image.load(file))
 end
 
-local trainData = torch.load(DATA_PATH..'train.t7')
+local trainData = torch.load(DATA_PATH..'train_full.t7')
 local testData = torch.load(DATA_PATH..'test.t7')
 
 trainDataset = tnt.SplitDataset{
