@@ -171,6 +171,7 @@ local trainingLosses, trainingErrors = {}, {}
 local intermediateTL, intermediateTE = {}, {}
 local validationLosses, validationErrors = {}, {}
 local intermediateVL, intermediateVE = {}, {}
+local timeVals = {}
 
 function metricCollectorReset()
     intermediateTL, intermediateTE = {}, {}
@@ -236,6 +237,10 @@ end
 engine.hooks.onEnd = function(state)
     print(string.format("%s: avg. loss: %2.4f; avg. error: %2.4f, time: %2.4f",
     mode, meter:value(), clerr:value{k = 1}, timer:value()))
+
+    if mode == 'Train' then
+        timeVals[epoch] = timer:value()
+    end
 end
 
 local epoch = 1
@@ -313,3 +318,4 @@ torch.save(opt.logDir .. "/trainingErrors_" .. file_suffix .. ".log", torch.Tens
 torch.save(opt.logDir .. "/trainingLosses_" .. file_suffix .. ".log", torch.Tensor(trainingLosses))
 torch.save(opt.logDir .. "/validationErrors_" .. file_suffix .. ".log", torch.Tensor(validationErrors))
 torch.save(opt.logDir .. "/validationLosses_" .. file_suffix .. ".log", torch.Tensor(validationLosses))
+torch.save(opt.logDir .. "/timers" .. file_suffix .. ".log", torch.Tensor(timeVals))
