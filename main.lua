@@ -186,6 +186,8 @@ end
 
 print('\nModel: '..tostring(model)..'\n')
 
+local epoch = 1
+
 engine.hooks.onStart = function(state)
     meter:reset()
     clerr:reset()
@@ -242,8 +244,6 @@ engine.hooks.onEnd = function(state)
         timeVals[epoch] = timer:value()
     end
 end
-
-local epoch = 1
 
 while epoch <= opt.nEpochs do
     trainDataset:select('train')
