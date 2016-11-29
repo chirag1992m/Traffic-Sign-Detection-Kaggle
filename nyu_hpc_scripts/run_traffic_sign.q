@@ -1,11 +1,14 @@
 #!/bin/bash
 
-#PBS -l nodes=1:ppn=1
-#PBS -l walltime=05:00:00
+#PBS -l nodes=1:ppn=1:gpus=1
+#PBS -l walltime=10:00:00
 #PBS -l mem=12GB
-#PBS -N basic_model
+#PBS -N traffic_sign
 #PBS -M chirag.m@nyu.edu
 #PBS -j oe
+#PBS -m abe
+
+#Change the name of job (under -N) and options to the actual run
 
 #Purge all the loaded modules, we'll load only the required modules
 module purge
@@ -43,6 +46,6 @@ fi
 echo "Moving to project directory.."
 cd $PROJECT_NAME
 
-echo "Running the model with 10 epochs in a verbose mode..."
-qlua main.lua -model cifar -nEpochs 10 -verbose
+echo "Running the model..."
+qlua main.lua -model cifar -verbose -cuda -suffix 'baseline' #Change the options to run here
 echo "All Done!"
