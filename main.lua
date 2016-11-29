@@ -1,7 +1,6 @@
 require 'torch'
 require 'optim'
 require 'os'
-require 'xlua'
 
 --[[
 --  Hint:  Plot as much as you can.  
@@ -22,11 +21,7 @@ if opt.cuda then
     cudnn.verbose = true
 end
 
-local WIDTH, HEIGHT = opt.imageSize, opt.imageSize
-local DATA_PATH = (opt.data ~= '' and opt.data or './data/')
-
 local file_suffix = opt.suffix .. string.format("_%d", os.time());
-print("Training Started")
 
 torch.setdefaulttensortype('torch.DoubleTensor')
 
@@ -37,127 +32,8 @@ if opt.cuda then
     cutorch.manualSeedAll(opt.manualSeed)
 end
 
-function resize(img)
-    return image.scale(img, WIDTH,HEIGHT)
-end
-
---[[
--- Hint:  Should we add some more transforms? shifting, scaling?
--- Should all images be of size 32x32?  Are we losing 
--- information by resizing bigger images to a smaller size?
---]]
-function transformInput(inp)
-    f = tnt.transform.compose{
-        [1] = resize
-    }
-    return f(inp)
-end
-
-function getTrainSample(dataset, idx)
-    r = dataset[idx]
-    classId, track, file = r[9], r[1], r[2]
-    file = string.format("%05d/%05d_%05d.ppm", classId, track, file)
-    return transformInput(image.load(DATA_PATH .. '/train_images/'..file))
-end
-
-function getTrainLabel(dataset, idx)
-    return torch.LongTensor{dataset[idx][9] + 1}
-end
-
-function getTestSample(dataset, idx)
-    r = dataset[idx]
-    file = DATA_PATH .. "/test_images/" .. string.format("%05d.ppm", r[1])
-    return transformInput(image.load(file))
-end
-
-local trainData = torch.load(DATA_PATH..'train_full.t7')
-local testData = torch.load(DATA_PATH..'test.t7')
-
-trainDataset = tnt.SplitDataset{
-    partitions = {train=(1 - (opt.val/100.0)), val=(opt.val/100.0)},
-    initialpartition = 'train',
-    --[[
-    --  Hint:  Use a resampling strategy that keeps the 
-    --  class distribution even during initial training epochs 
-    --  and then slowly converges to the actual distribution 
-    --  in later stages of training.
-    --]]
-    dataset = tnt.ShuffleDataset{
-        dataset = tnt.ListDataset{
-            list = torch.range(1, trainData:size(1)):long(),
-            load = function(idx)
-                return {
-                    input =  getTrainSample(trainData, idx),
-                    target = getTrainLabel(trainData, idx)
-                }
-            end
-        }
-    }
-}
-
-testDataset = tnt.ListDataset{
-    list = torch.range(1, testData:size(1)):long(),
-    load = function(idx)
-        return {
-            input = getTestSample(testData, idx),
-            target = torch.LongTensor{testData[idx][1]}
-        }
-    end
-}
-
-local getIterator = function (dataset)
-    return tnt.DatasetIterator{
-        dataset = tnt.BatchDataset{
-            batchsize = opt.batchsize,
-            dataset = dataset
-        }
-    }
-end
-
---[[
-if opt.cuda then
-    getIterator = function (dataset)
-        return tnt.ParallelDatasetIterator{
-            nthread = opt.nThreads,
-
-            init = function ()
-                    local tnt = require 'torchnet'
-                end,
-
-            closure = function ()
-                    local image = require 'image'
-
-                    local resize = function(img)
-                        return image.scale(img, WIDTH,HEIGHT)
-                    end
-
-                    local getTrainSample = function (dataset, idx)
-                        r = dataset[idx]
-                        classId, track, file = r[9], r[1], r[2]
-                        file = string.format("%05d/%05d_%05d.ppm", classId, track, file)
-                        return resize(image.load(DATA_PATH .. '/train_images/'..file))
-                    end
-
-                    local getTrainLabel = function (dataset, idx)
-                        return torch.LongTensor{dataset[idx][9] + 1}
-                    end
-
-                    local getTestSample = function (dataset, idx)
-                        r = dataset[idx]
-                        file = DATA_PATH .. "/test_images/" .. string.format("%05d.ppm", r[1])
-                        return transformInput(image.load(file))
-                    end
-
-                    return tnt.BatchDataset{
-                        batchsize = opt.batchsize,
-                        dataset = dataset
-                    }
-                end
-        }
-    end
-end
---]]
-
+print("Fetching data... ")
+local data = require (opt.dataset)
 
 local model = require("models/".. opt.model)
 local engine = tnt.OptimEngine()
@@ -218,10 +94,13 @@ engine.hooks.onForwardCriterion = function(state)
     meter:add(state.criterion.output)
     clerr:add(state.network.output, state.sample.target)
     if opt.verbose == true then
-        print(string.format("%s Batch: %d/%d; avg. loss: %2.4f; avg. error: %2.4f",
-                mode, batch, state.iterator.dataset:size(), meter:value(), clerr:value{k = 1}))
-    else
-        xlua.progress(batch, state.iterator.dataset:size())
+        if opt.cuda == false then
+            print(string.format("%s Batch: %d/%d; avg. loss: %2.4f; avg. error: %2.4f",
+                    mode, batch, state.iterator.dataset:size(), meter:value(), clerr:value{k = 1}))
+        else
+            print(string.format("%s Batch: %d; avg. loss: %2.4f; avg. error: %2.4f",
+                    mode, batch, meter:value(), clerr:value{k = 1}))
+        end
     end
 
     if mode == 'Train' then
@@ -245,12 +124,12 @@ engine.hooks.onEnd = function(state)
     end
 end
 
+print("Training Started")
 while epoch <= opt.nEpochs do
-    trainDataset:select('train')
     engine:train{
         network = model,
         criterion = criterion,
-        iterator = getIterator(trainDataset),
+        iterator = data.getTrainIterator(),
         optimMethod = optim.sgd,
         maxepoch = 1,
         config = {
@@ -262,11 +141,10 @@ while epoch <= opt.nEpochs do
     trainingLosses[epoch] = intermediateTL
     trainingErrors[epoch] = intermediateTE
 
-    trainDataset:select('val')
     engine:test{
         network = model,
         criterion = criterion,
-        iterator = getIterator(trainDataset)
+        iterator = data.getValIterator()
     }
 
     validationLosses[epoch] = intermediateVL
@@ -294,8 +172,6 @@ engine.hooks.onForward = function(state)
 
     if opt.verbose == true then
         print(string.format("%s Batch: %d/%d;", "test", batch, state.iterator.dataset:size()))
-    else
-        xlua.progress(batch, state.iterator.dataset:size())
     end
 
     batch = batch + 1
@@ -307,7 +183,7 @@ end
 
 engine:test{
     network = model,
-    iterator = getIterator(testDataset)
+    iterator = data.getTestIterator()
 }
 
 -- Dump the results in files

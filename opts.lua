@@ -22,6 +22,7 @@ function M.parse(arg)
     cmd:option('-cuda',				false,			'Use cuda tensor')
     cmd:option('-suffix',           '',             'Suffic to add on all output files')
     cmd:option('-imageSize',        32,             'Image Size in pixels to work on')
+    cmd:option('-dataset',          'data_full',    'data set to use')
 
     local opt = cmd:parse(arg or {})
 
