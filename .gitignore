@@ -1,6 +1,5 @@
 # Training and Test Data and logs
 *.ppm
-*.log
 
 # Windows image file caches
 Thumbs.db
@@ -52,4 +51,3 @@ Temporary Items
 
 #Notebook checkpoints
 */.ipynb_checkpoints*
-
