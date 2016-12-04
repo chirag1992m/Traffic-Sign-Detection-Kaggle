@@ -14,7 +14,7 @@ model:add(Conv(3, 16, 5, 5))
 model:add(Pool(2, 2, 2, 2))
 model:add(Non_linear())
 
-Concatenator = nn.Concat(1)
+Concatenator = nn.Concat(2)
 
 branch_1 = nn.Sequential()
 branch_1:add(Conv(16, 128, 5, 5))
