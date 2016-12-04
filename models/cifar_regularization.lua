@@ -1,3 +1,5 @@
+-- 3 x 32 x 32 image
+
 local nn = require 'nn'
 
 

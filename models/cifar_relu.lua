@@ -1,5 +1,6 @@
-local nn = require 'nn'
+-- 3 x 32 x 32 image
 
+local nn = require 'nn'
 
 local Convolution = nn.SpatialConvolution
 local RelU = nn.ReLU
