@@ -32,6 +32,7 @@ local valDataInfo = torch.load(DATA_PATH..'validation.t7')
 
 
 -- Preloading the data
+print("PreProcessing data...")
 function pre_process(img)
     f = tnt.transform.compose {
         function (inp) return image.rgb2yuv(inp) end,
@@ -79,6 +80,7 @@ for i=1, testDataInfo:size(1) do
     testData[i] = load_and_crop_test(testDataInfo[i])
     testDataLabel[i] = testDataInfo[i][1]
 end
+print("PreProcessing done!")
 --Preloading complete
 
 
@@ -91,6 +93,8 @@ for i=1, channels do
     std_global[i] = trainData[{{}, i, {}, {}}]:std()
 end
 
+print('mean: '.. tostring(mean_global))
+print('std: '.. tostring(std_global))
 
 --Normalize test and validation data
 for i=1, channels do
@@ -107,6 +111,7 @@ function BrightnessJitter(inp)
     if torch.uniform() < 0.5 then
         return inp
     end
+    inp = inp:clone()
     jitter = 1.0 - (torch.uniform(-0.3, 0.3))
     inp:mul(jitter)
     return inp
@@ -116,6 +121,7 @@ function ContrastJitter(inp)
     if torch.uniform() < 0.5 then
         return inp
     end
+    inp = inp:clone()
     local contrast = torch.Tensor(inp:size())
     for i=1, inp:size()[1] do
         contrast[i]:fill(inp[i]:mean())
@@ -152,9 +158,10 @@ function AddJitter(inp)
 end
 
 function GlobalContrastNormalize(inp)
+    inp = inp:clone()
     for i=1, channels do
-        inp[i]:add(-mean_global[i])
-        inp[i]:div(std_global[i])
+        inp[{i, {}, {}}]:add(-mean_global[i])
+        inp[{i, {}, {}}]:div(std_global[i])
     end
     return inp
 end
@@ -240,6 +247,7 @@ if opt.cuda then
                         if torch.uniform() < 0.5 then
                             return inp
                         end
+                        inp = inp:clone()
                         jitter = 1.0 - (torch.uniform(-0.3, 0.3))
                         inp:mul(jitter)
                         return inp
@@ -249,6 +257,7 @@ if opt.cuda then
                         if torch.uniform() < 0.5 then
                             return inp
                         end
+                        inp = inp:clone()
                         local contrast = torch.Tensor(inp:size())
                         for i=1, inp:size()[1] do
                             contrast[i]:fill(inp[i]:mean())
@@ -285,9 +294,10 @@ if opt.cuda then
                     end
 
                     local GlobalContrastNormalize = function (inp)
+                        inp = inp:clone()
                         for i=1, channels do
-                            inp[i]:add(-mean_global[i])
-                            inp[i]:div(std_global[i])
+                            inp[{i, {}, {}}]:add(-mean_global[i])
+                            inp[{i, {}, {}}]:div(std_global[i])
                         end
                         return inp
                     end
