@@ -23,22 +23,17 @@ branch_1:add(Pool(108, 2, 2, 2, 2))
 branch_1:add(Non_linear())
 branch_1:add(Vector(2700))
 
-branch_2 = nn.Sequential()
-branch_2:add(Pool(108, 2, 2, 2, 2))
-branch_2:add(Non_linear())
-branch_2:add(Vector(5292))
+branch_2 = Vector(21168)
 
 Concatenator:add(branch_1)
 Concatenator:add(branch_2)
 
 model:add(Concatenator)
 
-model:add(FC(7992, 100))
+model:add(FC(23868, 1000))
 model:add(Non_linear())
 model:add(Reg(0.5))
-model:add(FC(100, 100))
-model:add(Non_linear())
-model:add(Reg(0.5))
-model:add(FC(100, 43))
+model:add(FC(1000, 43))
+
 
 return model

@@ -17,9 +17,6 @@
 -- Scale the image to the given size
 -- Globally normalize
 
-require 'torch'
-require 'nn'
-
 local optParser = require 'opts'
 local opt = optParser.parse(arg)
 
