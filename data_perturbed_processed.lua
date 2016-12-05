@@ -34,8 +34,8 @@ local valDataInfo = torch.load(DATA_PATH..'validation.t7')
 -- Preloading the data
 function pre_process(img)
     f = tnt.transform.compose {
-        [1] = function (inp) return image.rgb2yuv(inp) end,
-        [2] = function (inp) return image.scale(inp, WIDTH, HEIGHT) end
+        function (inp) return image.rgb2yuv(inp) end,
+        function (inp) return image.scale(inp, WIDTH, HEIGHT) end
     }
     return f(img)
 end
@@ -167,12 +167,16 @@ function GetTrainSample(inp)
     return f(inp)
 end
 
+function GetTestSample(inp)
+    return inp
+end
+
 --Creating the datasets
 local valDataset = tnt.ListDataset{
     list = torch.range(1, valData:size(1)):long(),
     load = function(idx)
         return {
-            input = valData[idx],
+            input = GetTestSample(valData[idx]),
             target = torch.LongTensor{valDataLabel[idx]}
         }
     end
@@ -194,7 +198,7 @@ local testDataset = tnt.ListDataset{
     list = torch.range(1, testData:size(1)):long(),
     load = function(idx)
         return {
-            input = testData[idx],
+            input = GetTestSample(testData[idx]),
             target = torch.LongTensor{testDataLabel[idx]}
         }
     end
