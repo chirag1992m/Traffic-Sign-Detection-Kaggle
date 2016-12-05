@@ -74,8 +74,10 @@ for i=1, valDataInfo:size(1) do
 end
 
 local testData = torch.Tensor(testDataInfo:size(1), channels, WIDTH, HEIGHT)
+local testDataLabel = torch.Tensor(testDataInfo:size(1))
 for i=1, testDataInfo:size(1) do
     testData[i] = load_and_crop_test(testDataInfo[i])
+    testDataLabel[i] = testDataInfo[i][1]
 end
 --Preloading complete
 
@@ -86,7 +88,7 @@ local std_global = torch.zeros(3)
 
 for i=1, channels do
     mean_global[i] = trainData[{{}, i, {}, {}}]:mean()
-    std_global[i] = trainData[{{}, i, {}, {}}]:mean()
+    std_global[i] = trainData[{{}, i, {}, {}}]:std()
 end
 
 
@@ -99,8 +101,8 @@ for i=1, channels do
     valData[{{}, i, {}, {}}]:div(std_global[i])
 end
 
--- Function to handle Jittering and Preprocessing
 
+-- Function to handle Jittering and Preprocessing
 function BrightnessJitter(inp)
     if torch.uniform() < 0.5 then
         return inp
@@ -141,8 +143,8 @@ end
 
 function AddJitter(inp)
     f = tnt.transform.compose{
---        ContrastJitter,
---        BrightnessJitter,
+        ContrastJitter,
+        BrightnessJitter,
         RandomRotate,
         RandomTranslate
     }
@@ -152,7 +154,7 @@ end
 function GlobalContrastNormalize(inp)
     for i=1, channels do
         inp[i]:add(-mean_global[i])
-        inp[i]:div(-std_global[i])
+        inp[i]:div(std_global[i])
     end
     return inp
 end
@@ -193,7 +195,7 @@ local testDataset = tnt.ListDataset{
     load = function(idx)
         return {
             input = testData[idx],
-            target = torch.LongTensor{0}
+            target = torch.LongTensor{testDataLabel[idx]}
         }
     end
 }
@@ -270,8 +272,8 @@ if opt.cuda then
 
                     local AddJitter = function (inp)
                         f = tnt.transform.compose{
---                            ContrastJitter,
---                            BrightnessJitter,
+                            ContrastJitter,
+                            BrightnessJitter,
                             RandomRotate,
                             RandomTranslate
                         }
@@ -281,7 +283,7 @@ if opt.cuda then
                     local GlobalContrastNormalize = function (inp)
                         for i=1, channels do
                             inp[i]:add(-mean_global[i])
-                            inp[i]:div(-std_global[i])
+                            inp[i]:div(std_global[i])
                         end
                         return inp
                     end
