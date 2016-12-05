@@ -141,8 +141,8 @@ end
 
 function AddJitter(inp)
     f = tnt.transform.compose{
-        ContrastJitter,
-        BrightnessJitter,
+--        ContrastJitter,
+--        BrightnessJitter,
         RandomRotate,
         RandomTranslate
     }
@@ -270,8 +270,8 @@ if opt.cuda then
 
                     local AddJitter = function (inp)
                         f = tnt.transform.compose{
-                            ContrastJitter,
-                            BrightnessJitter,
+--                            ContrastJitter,
+--                            BrightnessJitter,
                             RandomRotate,
                             RandomTranslate
                         }
