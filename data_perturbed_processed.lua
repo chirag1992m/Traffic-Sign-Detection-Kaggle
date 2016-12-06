@@ -135,6 +135,21 @@ function ContrastJitter(inp)
     return inp:mul(jitter):add(1 - jitter, contrast)
 end
 
+function SaturationJitter(inp)
+    if torch.uniform() < 0.5 then
+        return inp
+    end
+    inp = inp:clone()
+    local saturation = torch.Tensor(inp:size())
+    saturation[1]:zero()
+    saturation[1]:add(0.299, inp[1]):add(0.587, inp[2]):add(0.114, inp[3])
+    saturation[2]:copy(saturation[1])
+    saturation[3]:copy(saturation[1])
+    jitter = 1.0 - (torch.uniform(-0.3, 0.3))
+
+    return inp:mul(jitter):add(1 - jitter, saturation)
+end
+
 function RandomRotate(inp)
     if torch.uniform() < 0.5 then
         return inp
@@ -146,7 +161,7 @@ function RandomTranslate(inp)
     if torch.uniform() < 0.5 then
         return inp
     end
-    jitter = torch.uniform(-2, 2)
+    jitter = torch.uniform(-3, 3)
     return image.translate(inp, jitter, jitter)
 end
 
@@ -155,6 +170,7 @@ function AddJitter(inp)
     f = tnt.transform.compose{
         ContrastJitter,
         BrightnessJitter,
+        SaturationJitter,
         RandomRotate,
         RandomTranslate
     }
@@ -271,6 +287,21 @@ if opt.cuda then
                         return inp:mul(jitter):add(1 - jitter, contrast)
                     end
 
+                    local SaturationJitter = function (inp)
+                        if torch.uniform() < 0.5 then
+                            return inp
+                        end
+                        inp = inp:clone()
+                        local saturation = torch.Tensor(inp:size())
+                        saturation[1]:zero()
+                        saturation[1]:add(0.299, inp[1]):add(0.587, inp[2]):add(0.114, inp[3])
+                        saturation[2]:copy(saturation[1])
+                        saturation[3]:copy(saturation[1])
+                        jitter = 1.0 - (torch.uniform(-0.3, 0.3))
+
+                        return inp:mul(jitter):add(1 - jitter, saturation)
+                    end
+
                     local RandomRotate = function (inp)
                         if torch.uniform() < 0.5 then
                             return inp
@@ -291,6 +322,7 @@ if opt.cuda then
                         f = tnt.transform.compose{
                             ContrastJitter,
                             BrightnessJitter,
+                            SaturationJitter,
                             RandomRotate,
                             RandomTranslate
                         }
