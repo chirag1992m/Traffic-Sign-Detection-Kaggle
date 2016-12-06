@@ -45,10 +45,9 @@ local batch = 1
 
 local trainingLosses, trainingErrors = {}, {}
 local intermediateTL, intermediateTE = {}, {}
-if not opt.dontValidate then
-    local validationLosses, validationErrors = {}, {}
-    local intermediateVL, intermediateVE = {}, {}
-end
+local validationLosses, validationErrors = {}, {}
+local intermediateVL, intermediateVE = {}, {}
+
 local timeVals = {}
 
 function metricCollectorReset()
