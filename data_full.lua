@@ -73,6 +73,10 @@ local valDataset = tnt.ListDataset{
     end
 }
 
+if opt.dontValidate then
+    trainingData = trainingData:cat(validationData, 1)
+end
+
 local trainDataset = tnt.ListDataset{
     list = torch.range(1, trainingData:size(1)):long(),
     load = function(idx)

@@ -23,6 +23,7 @@ function M.parse(arg)
     cmd:option('-suffix',           '',             'Suffic to add on all output files')
     cmd:option('-imageSize',        32,             'Image Size in pixels to work on')
     cmd:option('-dataset',          'data_full',    'data set to use')
+    cmd:option('-dontValidate',     false,          'Should the model be trained on the whole dataset?')
 
     local opt = cmd:parse(arg or {})
 

@@ -45,13 +45,17 @@ local batch = 1
 
 local trainingLosses, trainingErrors = {}, {}
 local intermediateTL, intermediateTE = {}, {}
-local validationLosses, validationErrors = {}, {}
-local intermediateVL, intermediateVE = {}, {}
+if not opt.dontValidate then
+    local validationLosses, validationErrors = {}, {}
+    local intermediateVL, intermediateVE = {}, {}
+end
 local timeVals = {}
 
 function metricCollectorReset()
     intermediateTL, intermediateTE = {}, {}
-    intermediateVL, intermediateVE = {}, {}
+    if not opt.dontValidate then
+        intermediateVL, intermediateVE = {}, {}
+    end
 end
 
 
@@ -107,8 +111,10 @@ engine.hooks.onForwardCriterion = function(state)
         intermediateTL[batch] = meter:value()
         intermediateTE[batch] = clerr:value{k = 1}
     else
-        intermediateVL[batch] = meter:value()
-        intermediateVE[batch] = clerr:value{k = 1}
+        if not opt.dontValidate then
+            intermediateVL[batch] = meter:value()
+            intermediateVE[batch] = clerr:value{k = 1}
+        end
     end
 
     batch = batch + 1 -- batch increment has to happen here to work for train, val and test.
@@ -141,14 +147,16 @@ while epoch <= opt.nEpochs do
     trainingLosses[epoch] = intermediateTL
     trainingErrors[epoch] = intermediateTE
 
-    engine:test{
-        network = model,
-        criterion = criterion,
-        iterator = data.getValIterator()
-    }
+    if not opt.dontValidate then
+        engine:test{
+            network = model,
+            criterion = criterion,
+            iterator = data.getValIterator()
+        }
 
-    validationLosses[epoch] = intermediateVL
-    validationErrors[epoch] = intermediateVE
+        validationLosses[epoch] = intermediateVL
+        validationErrors[epoch] = intermediateVE
+    end
 
     print('Done with Epoch '..tostring(epoch))
     epoch = epoch + 1
@@ -192,6 +200,8 @@ torch.save(opt.logDir .. "/model_" .. file_suffix .. ".model", model)
 
 torch.save(opt.logDir .. "/trainingErrors_" .. file_suffix .. ".log", torch.Tensor(trainingErrors))
 torch.save(opt.logDir .. "/trainingLosses_" .. file_suffix .. ".log", torch.Tensor(trainingLosses))
-torch.save(opt.logDir .. "/validationErrors_" .. file_suffix .. ".log", torch.Tensor(validationErrors))
-torch.save(opt.logDir .. "/validationLosses_" .. file_suffix .. ".log", torch.Tensor(validationLosses))
+if not opt.dontValidate then
+    torch.save(opt.logDir .. "/validationErrors_" .. file_suffix .. ".log", torch.Tensor(validationErrors))
+    torch.save(opt.logDir .. "/validationLosses_" .. file_suffix .. ".log", torch.Tensor(validationLosses))
+end
 torch.save(opt.logDir .. "/timers" .. file_suffix .. ".log", torch.Tensor(timeVals))

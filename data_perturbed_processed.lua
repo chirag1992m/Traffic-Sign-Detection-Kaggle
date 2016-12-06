@@ -30,6 +30,10 @@ local trainDataInfo = torch.load(DATA_PATH..'train.t7')
 local testDataInfo = torch.load(DATA_PATH..'test.t7')
 local valDataInfo = torch.load(DATA_PATH..'validation.t7')
 
+if opt.dontValidate then
+    trainDataInfo = trainDataInfo:cat(valDataInfo, 1)
+end
+
 
 -- Preloading the data
 print("PreProcessing data...")
