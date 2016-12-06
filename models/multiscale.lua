@@ -11,15 +11,15 @@ local FC = nn.Linear
 local model  = nn.Sequential()
 
 model:add(Conv(3, 16, 5, 5))
-model:add(Pool(2, 2, 2, 2))
 model:add(Non_linear())
+model:add(Pool(2, 2, 2, 2))
 
 Concatenator = nn.Concat(2)
 
 branch_1 = nn.Sequential()
 branch_1:add(Conv(16, 128, 5, 5))
-branch_1:add(Pool(2, 2, 2, 2))
 branch_1:add(Non_linear())
+branch_1:add(Pool(2, 2, 2, 2))
 branch_1:add(Vector(3200))
 
 branch_2 = Vector(3136)

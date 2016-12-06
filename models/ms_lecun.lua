@@ -12,15 +12,15 @@ local Reg = nn.Dropout
 local model  = nn.Sequential()
 
 model:add(Conv(3, 108, 5, 5))
-model:add(Pool(108, 2, 2, 2, 2))
 model:add(Non_linear())
+model:add(Pool(108, 2, 2, 2, 2))
 
 Concatenator = nn.Concat(2)
 
 branch_1 = nn.Sequential()
 branch_1:add(Conv(108, 108, 5, 5))
-branch_1:add(Pool(108, 2, 2, 2, 2))
 branch_1:add(Non_linear())
+branch_1:add(Pool(108, 2, 2, 2, 2))
 branch_1:add(Vector(2700))
 
 branch_2 = Vector(21168)
