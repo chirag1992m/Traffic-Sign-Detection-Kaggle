@@ -3,7 +3,7 @@
 local nn = require 'nn'
 
 local Conv = nn.SpatialConvolution
-local Non_linear = nn.Tanh()
+local Non_linear = nn.Tanh
 local Pool = nn.SpatialMaxPooling
 local Vector = nn.Reshape
 local FC = nn.Linear
@@ -13,14 +13,14 @@ local model  = nn.Sequential()
 
 model:add(Conv(3, 16, 5, 5))
 model:add(Non_linear())
-model:add(Pool(2, 2, 2, 2))
+model:add(Pool(2, 2, 2, 2):ceil())
 
 Concatenator = nn.Concat(2)
 
 branch_1 = nn.Sequential()
 branch_1:add(Conv(16, 128, 5, 5))
 branch_1:add(Non_linear())
-branch_1:add(Pool(2, 2, 2, 2))
+branch_1:add(Pool(2, 2, 2, 2):ceil())
 branch_1:add(Vector(3200))
 
 branch_2 = Vector(3136)
@@ -31,9 +31,6 @@ Concatenator:add(branch_2)
 model:add(Concatenator)
 
 model:add(FC(6336, 100))
-model:add(Non_linear())
-model:add(Reg(0.5))
-model:add(FC(100, 100))
 model:add(Non_linear())
 model:add(Reg(0.5))
 model:add(FC(100, 43))
