@@ -18,26 +18,26 @@ local function ConvBNReLU(nInputPlane, nOutputPlane)
   return model
 end
 
-ConvBNReLU(3,64):add(Reg(0.3))
+ConvBNReLU(3,64)
 ConvBNReLU(64,64)
 model:add(SubSample(2,2,2,2):ceil())
 
-ConvBNReLU(64,128):add(Reg(0.4))
+ConvBNReLU(64,128)
 ConvBNReLU(128,128)
 model:add(SubSample(2,2,2,2):ceil())
 
-ConvBNReLU(128,256):add(Reg(0.4))
-ConvBNReLU(256,256):add(Reg(0.4))
+ConvBNReLU(128,256)
+ConvBNReLU(256,256)
 ConvBNReLU(256,256)
 model:add(SubSample(2,2,2,2):ceil())
 
-ConvBNReLU(256,512):add(Reg(0.4))
-ConvBNReLU(512,512):add(Reg(0.4))
+ConvBNReLU(256,512)
+ConvBNReLU(512,512)
 ConvBNReLU(512,512)
 model:add(SubSample(2,2,2,2):ceil())
 
-ConvBNReLU(512,512):add(Reg(0.4))
-ConvBNReLU(512,512):add(Reg(0.4))
+ConvBNReLU(512,512)
+ConvBNReLU(512,512)
 ConvBNReLU(512,512)
 model:add(SubSample(2,2,2,2):ceil())
 model:add(nn.View(512))
