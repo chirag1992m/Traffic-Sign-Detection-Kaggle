@@ -44,18 +44,9 @@ local timer = tnt.TimeMeter()
 local batch = 1
 
 local trainingLosses, trainingErrors = {}, {}
-local intermediateTL, intermediateTE = {}, {}
 local validationLosses, validationErrors = {}, {}
-local intermediateVL, intermediateVE = {}, {}
 
 local timeVals = {}
-
-function metricCollectorReset()
-    intermediateTL, intermediateTE = {}, {}
-    if not opt.dontValidate then
-        intermediateVL, intermediateVE = {}, {}
-    end
-end
 
 
 if opt.cuda then
@@ -71,7 +62,6 @@ engine.hooks.onStart = function(state)
     meter:reset()
     clerr:reset()
     timer:reset()
-    metricCollectorReset()
     batch = 1
     if state.training then
         mode = 'Train'
@@ -106,16 +96,6 @@ engine.hooks.onForwardCriterion = function(state)
         end
     end
 
-    if mode == 'Train' then
-        intermediateTL[batch] = meter:value()
-        intermediateTE[batch] = clerr:value{k = 1}
-    else
-        if not opt.dontValidate then
-            intermediateVL[batch] = meter:value()
-            intermediateVE[batch] = clerr:value{k = 1}
-        end
-    end
-
     batch = batch + 1 -- batch increment has to happen here to work for train, val and test.
     timer:incUnit()
 end
@@ -126,6 +106,13 @@ engine.hooks.onEnd = function(state)
 
     if mode == 'Train' then
         timeVals[epoch] = timer:value()
+        trainingLosses[epoch] = meter:value()
+        trainingErrors[epoch] = clerr:value{k = 1}
+    else
+        if not opt.dontValidate then
+            validationLosses[epoch] = meter:value()
+            validationErrors[epoch] = clerr:value{k = 1}
+        end 
     end
 end
 
@@ -147,18 +134,12 @@ while epoch <= opt.nEpochs do
         }
     }
 
-    trainingLosses[epoch] = intermediateTL
-    trainingErrors[epoch] = intermediateTE
-
     if not opt.dontValidate then
         engine:test{
             network = model,
             criterion = criterion,
             iterator = data.getValIterator()
         }
-
-        validationLosses[epoch] = intermediateVL
-        validationErrors[epoch] = intermediateVE
     end
 
     print('Done with Epoch '..tostring(epoch))

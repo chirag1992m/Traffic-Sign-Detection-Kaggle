@@ -91,7 +91,7 @@ for i=1, 43 do
 end
 
 local distributionParameter = 1.0
-local distributionGradient = 0.5
+local distributionGradient = opt.resampler
 local trainAuxilliary = nil
 
 -- Construct the other datasets
