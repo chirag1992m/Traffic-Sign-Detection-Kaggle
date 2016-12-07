@@ -131,6 +131,10 @@ end
 
 print("Training Started")
 while epoch <= opt.nEpochs do
+    if data.update then
+        data.update(epoch) --Update if any changes to dataset are required
+    end
+
     engine:train{
         network = model,
         criterion = criterion,
