@@ -7,6 +7,7 @@ local RelU = nn.ReLU
 local Max = nn.SpatialMaxPooling
 local View = nn.View
 local Linear = nn.Linear
+local Regularization = nn.Dropout
 
 local model  = nn.Sequential()
 
@@ -19,6 +20,7 @@ model:add(Max(2,2,2,2))
 model:add(View(3200))
 model:add(Linear(3200, 64))
 model:add(RelU())
+model:add(Regularization(0.5))
 model:add(Linear(64, 43))
 
 return model
