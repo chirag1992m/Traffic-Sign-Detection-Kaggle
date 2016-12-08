@@ -79,7 +79,13 @@ for i=1, trainDataInfo:size(1) do
     trainDataIndexes[trainDataLabel[i]][#trainDataIndexes[trainDataLabel[i]] + 1] = i
 end
 local initialClassDistribution = torch.DoubleTensor(43):fill(actualClassDistribution:max()) -- Resample to 1:1 ratio
-local currentClassDistribution = initialClassDistribution:clone()
+
+local currentClassDistribution = nil
+if not opt.resampler_rev then
+    currentClassDistribution = initialClassDistribution:clone()
+else
+    currentClassDistribution = actualClassDistribution:clone()
+end
 
 --Upscale the trainDataIndexes to currentClassDistribtion
 for i=1, 43 do
@@ -263,7 +269,11 @@ function M.getValIterator()
 end
 
 function M.update(temp_epoch)
-    currentClassDistribution = ((initialClassDistribution * distributionParameter) + ((1 - distributionParameter) * actualClassDistribution)):clone()
+    if not opt.resampler_rev then
+        currentClassDistribution = ((initialClassDistribution * distributionParameter) + ((1 - distributionParameter) * actualClassDistribution)):clone()
+    else
+        currentClassDistribution = ((actualClassDistribution * distributionParameter) + ((1 - distributionParameter) * initialClassDistribution)):clone()
+    end
     currentClassDistribution:ceil()
 
     distributionParameter = distributionParameter * distributionGradient

@@ -25,6 +25,7 @@ function M.parse(arg)
     cmd:option('-dataset',          'data_full',    'data set to use')
     cmd:option('-dontValidate',     false,          'Should the model be trained on the whole dataset?')
     cmd:option('-resampler',        0.5,            'Re-sampling gradient parameter')
+    cmd:option('-resampler_rev',    false,          'Reverse the resampler (actual to initial)')
 
     local opt = cmd:parse(arg or {})
 
