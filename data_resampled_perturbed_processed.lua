@@ -264,7 +264,7 @@ end
 
 function M.update(temp_epoch)
     currentClassDistribution = ((initialClassDistribution * distributionParameter) + ((1 - distributionParameter) * actualClassDistribution)):clone()
-    currentClassDistribution:floor()
+    currentClassDistribution:ceil()
 
     distributionParameter = distributionParameter * distributionGradient
 
