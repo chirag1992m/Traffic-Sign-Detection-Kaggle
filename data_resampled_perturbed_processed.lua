@@ -274,8 +274,17 @@ function M.update(temp_epoch)
     for i=1, 43 do
         local size_difference = #trainDataIndexes[i] - currentClassDistribution[i]
         print("size_difference", size_difference)
-        for j=1, size_difference do
-            table.remove(trainDataIndexes[i])
+        if size_difference > 0 then
+            for j=1, size_difference do
+                table.remove(trainDataIndexes[i])
+            end
+        else
+            size_difference = size_difference * -1
+            local sample_size = #trainDataIndexes[i]
+            for j=1, size_difference do
+                index = torch.ceil(torch.uniform(1, sample_size))
+                trainDataIndexes[i][#trainDataIndexes[i] + 1] = trainDataIndexes[i][index]
+            end
         end
 
         for j=1, #trainDataIndexes[i] do
