@@ -23,7 +23,7 @@ model:add(Max(2,2,2,2))
 model:add(View(3200))
 model:add(Linear(3200, 64))
 model:add(RelU())
-model:add(Regularization(0.5))
+model:add(Regularization(0.3))
 model:add(Linear(64, 43))
 
 return model
