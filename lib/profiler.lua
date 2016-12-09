@@ -3,14 +3,18 @@ local M = {}
 
 local op_count
 local op_used
+local parameters_count
+local parameters_used
 
-function M.count_ops(network, input)
+function M.profile(network, input)
     op_count = 0
     op_used = {}
+    parameters_count = 0
+    parameters_used = {}
     network:apply(intercept_updateOutput)
     network:forward(input)
     network:apply(restore_updateOutput)
-    return op_count, op_used
+    return op_count, op_used, parameters_count, parameters_used
 end
 
 -- Intercept updateOutput. At each call increment op_count appropriately.
@@ -36,9 +40,11 @@ function compute_ops(module, input)
     module_name = torch.type(module)
     handler = module_handlers[module_name]
     assert(handler, string.format("No handler for module %s!", module_name))
-    local ops = handler(module, input)
+    local ops, paras = handler(module, input)
+    parameters_count = parameters_count + paras
     op_count = op_count + ops
     table.insert(op_used, {name = torch.type(module), ops = ops})
+    table.insert(parameters_used, {name = torch.type(module), paras = paras})
 end
 
 --------------------------------------------------------------------------------
@@ -46,7 +52,7 @@ end
 --------------------------------------------------------------------------------
 
 local function ops_nothing(module, input)
-    return 0
+    return 0, 0
 end
 
 local function ops_linear(module, input)
@@ -54,7 +60,7 @@ local function ops_linear(module, input)
     local weight_ops = module.weight:nElement() * 2
     local bias_ops = module.bias:nElement()
     local ops_per_sample = weight_ops + bias_ops
-    return batch_size * ops_per_sample
+    return batch_size * ops_per_sample, (module.weight:nElement() + module.bias:nElement())
 end
 
 local function ops_logsoftmax(module, input)
@@ -64,12 +70,12 @@ local function ops_logsoftmax(module, input)
     -- +2 for accumulation and substraction in two loops
     local ops_per_elem = expminusapprox_ops + 1 + 1
     local ops_per_sample = input_dim * ops_per_elem
-    return batch_size * ops_per_sample
+    return batch_size * ops_per_sample, 0
 end
 
 -- WARNING: an oversimplified version
 local function ops_nonlinearity(module, input)
-    return input:nElement()
+    return input:nElement(), 0
 end
 
 local function ops_convolution(module, input)
@@ -88,7 +94,7 @@ local function ops_convolution(module, input)
     local output_width = math.floor((input_width + 2 * module.padW - module.kW) / module.dW + 1)
     local output_height = math.floor((input_height + 2 * module.padH - module.kH) / module.dH + 1)
 
-    return batch_size * module.nOutputPlane * output_width * output_height * ops_per_element
+    return (batch_size * module.nOutputPlane * output_width * output_height * ops_per_element), (input_planes * module.nOutputPlane * module.kH * module.kW)
 end
 
 local function ops_fullconvolution(module, input)
@@ -107,7 +113,7 @@ local function ops_fullconvolution(module, input)
     local output_height = (input_height - 1) * module.dH - 2 * module.padW + module.kH + module.adjH
     local bias_ops = output_width * output_height * module.nOutputPlane
 
-    return batch_size * (sample_kernel_ops + bias_ops)
+    return batch_size * (sample_kernel_ops + bias_ops), (input_planes * module.nOutputPlane * module.kH * module.kW)
 end
 
 local function ops_pooling(module, input)
@@ -122,7 +128,7 @@ local function ops_pooling(module, input)
     local output_width = math.floor((input_width + 2 * module.padW - module.kW) / module.dW + 1)
     local output_height = math.floor((input_height + 2 * module.padH - module.kH) / module.dH + 1)
 
-    return batch_size * input_planes * output_width * output_height * kernel_ops
+    return batch_size * input_planes * output_width * output_height * kernel_ops, 0
 end
 
 local function ops_unpooling(module, input)
@@ -136,16 +142,16 @@ local function ops_unpooling(module, input)
     local output_width = (input_width - 1) * module.pooling.dW - (2 * module.pooling.padW - module.pooling.kW)
     local output_height = (input_height - 1) * module.pooling.dH - (2 * module.pooling.padH - module.pooling.kH)
 
-    return batch_size * output_width * output_height
+    return batch_size * output_width * output_height, 0
 end
 
 local function ops_caddtable(module, input)
     assert(torch.type(input) == 'table', "ops_caddtable input should be a table!")
-    return input[1]:nElement() * #input
+    return input[1]:nElement() * #input, 0
 end
 
 local function ops_batchnorm(module, input)
-    return input:nElement() * 2
+    return input:nElement() * 2, 0
 end
 
 local function ops_sum(module, input)
@@ -155,7 +161,7 @@ local function ops_sum(module, input)
       local s = input:size(d)
       ops = d ~= module.dimension and ops * s or ops * (s - 1)
    end
-   return ops
+   return ops, 0
 end
 
 module_handlers = {

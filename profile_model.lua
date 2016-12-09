@@ -25,13 +25,22 @@ local model = require("models/".. opt.model)
 --Create a random input of the given size
 local randomInput = torch.rand(torch.LongStorage{1, 3, WIDTH, HEIGHT})
 
-local total_ops, layer_ops = profiler.count_ops(model, randomInput)
+local total_ops, layer_ops, total_paras, layer_paras = profiler.profile(model, randomInput)
 
 -- Compute per layer opt counts
-local per_layer = {}
+print("Operations...")
 for i, info in pairs(layer_ops) do
     local name = info['name']
     local ops = info['ops']
 
     print(string.format('%-32s%d %s, %.3f%%', name..':', ops, 'Operations', ((ops/total_ops) * 100)))
+end
+
+-- Compute per layer opt counts
+print("Parameters...")
+for i, info in pairs(layer_paras) do
+    local name = info['name']
+    local paras = info['paras']
+
+    print(string.format('%-32s%d %s, %.3f%%', name..':', paras, 'Parameters', ((paras/total_paras) * 100)))
 end
