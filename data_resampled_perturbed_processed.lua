@@ -121,6 +121,15 @@ print("PreProcessing done!")
 --Pre-calculate std deviation and mean for global normalization
 local mean_global = torch.zeros(3)
 local std_global = torch.zeros(3)
+local pca = {
+   eigval = torch.Tensor{ 0.2175, 0.0188, 0.0045 },
+   eigvec = torch.Tensor{
+      { -0.5675,  0.7192,  0.4009 },
+      { -0.5808, -0.0045, -0.8140 },
+      { -0.5836, -0.6948,  0.4203 },
+   },
+}
+local alphastd = 0.1
 
 for i=1, channels do
     mean_global[i] = trainData[{{}, i, {}, {}}]:mean()
@@ -141,6 +150,25 @@ end
 
 
 -- Function to handle Jittering and Preprocessing
+function LightingJitter(inp)
+    if torch.uniform() < 0.5 then
+        return inp
+    end
+
+    local alpha = torch.Tensor(3):normal(0, alphastd)
+    local channel_inp = pca.eigvec:clone()
+        :cmul(alpha:view(1, 3):expand(3, 3))
+        :cmul(pca.eigval:view(1, 3):expand(3, 3))
+        :sum(2)
+        :squeeze()
+
+    inp = inp:clone()
+    for i=1,3 do
+        inp[i]:add(channel_inp[i])
+    end
+    return inp
+end
+
 function BrightnessJitter(inp)
     if torch.uniform() < 0.5 then
         return inp
@@ -201,6 +229,7 @@ function AddJitter(inp)
         ContrastJitter,
         BrightnessJitter,
         SaturationJitter,
+        LightingJitter,
         RandomRotate,
         RandomTranslate
     }
@@ -356,6 +385,25 @@ if opt.cuda then
                         return inp:mul(jitter):add(1 - jitter, saturation)
                     end
 
+                    local LightingJitter = function (inp)
+                        if torch.uniform() < 0.5 then
+                            return inp
+                        end
+
+                        local alpha = torch.Tensor(3):normal(0, alphastd)
+                        local channel_inp = pca.eigvec:clone()
+                            :cmul(alpha:view(1, 3):expand(3, 3))
+                            :cmul(pca.eigval:view(1, 3):expand(3, 3))
+                            :sum(2)
+                            :squeeze()
+
+                        inp = inp:clone()
+                        for i=1,3 do
+                            inp[i]:add(channel_inp[i])
+                        end
+                        return inp
+                    end
+
                     local RandomRotate = function (inp)
                         if torch.uniform() < 0.5 then
                             return inp
@@ -377,6 +425,7 @@ if opt.cuda then
                             ContrastJitter,
                             BrightnessJitter,
                             SaturationJitter,
+                            LightingJitter,
                             RandomRotate,
                             RandomTranslate
                         }
